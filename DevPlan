@@ -1,398 +1,172 @@
-# A-to-Z Development Plan: IoT-Based Smart Voting and Public Bill Archive System
+# A-to-Z Development Plan: IoT-Based Digital Voting and Public Bill Archive System
 
-This plan is structured for a realistic prototype build, beginning with a working local system and then expanding toward a final demonstration. The goal is to build and validate each subsystem independently before integrating everything into one end-to-end system.
+We’ll build your parliamentary voting project from scratch, step by step, using the hardware you have selected and a beginner-friendly development workflow. The goal is to get a working prototype first, then refine and extend it.
 
-The most important rule: do not build the entire system at once. Build, test, and stabilize each module separately before connecting them.
+The most important rule: build and test each component separately before combining everything. That will make debugging much easier.
 
----
+## 1. What we are going to build
 
-## 1. Project vision
+Administrative Website
 
-This project combines:
+- Main Host and Assistant Host use desktop computers and the Logitech keyboard.
 
-- an administrative website for managing members, terms, bills, and sessions
-- a backend API for validating votes and publishing results
-- an ESP32 voting terminal with fingerprint verification
-- a public bill archive where finalized results and proposal PDFs are displayed
+Wi‑Fi / local network / HTTPS API
 
-### Core system flow
+Central Server and Database
 
-Admin Website
-  -> Backend API
-  -> SQLite Database
-  -> Session / Bill / Vote management
+- Users, fingerprints' reference IDs, bills, sessions, votes, deadlines, results, and audit records.
 
-ESP32 Terminal
-  -> Wi-Fi
-  -> Backend API
-  -> Fingerprint verification
-  -> Vote submission
+Wi‑Fi / API
 
-Public Website
-  -> Backend API
-  -> Finalized records only
-  -> PDF and result archive
+ESP32 Voting Terminal
 
----
+- ESP32 DevKit V1 + AS608 fingerprint sensor + 3.5-inch ILI9488 TFT + buttons + LEDs + buzzer.
 
-## 2. System components
+Published finalized records
 
-### Administrative Website
-Used by:
-- Main Host
-- Assistant Host
+Public Website and Bill Archive
 
-Functions:
-- member registration
-- parliamentary term management
-- bill creation and PDF upload
-- session creation and approval
-- session monitoring
-- result publication controls
+- Final voting results, complete proposal PDFs, bill details, dates, and historical parliamentary terms.
 
-### ESP32 Voting Terminal
-Hardware:
-- ESP32 DevKit V1
-- AS608 fingerprint sensor
-- 3.5-inch ILI9488 TFT display
-- buttons
-- LEDs
-- buzzer
-
-Functions:
-- connect to Wi-Fi
-- fetch current session
-- authenticate user by fingerprint
-- submit vote to server
-- show feedback via screen, LED, and buzzer
-
-### Central Backend and Database
-Functions:
-- user authentication
-- role-based access control
-- session and bill validation
-- vote acceptance and deadline checks
-- final result generation
-- public data serving
-
-### Public Website and Bill Archive
-Functions:
-- display finalized bills
-- show voting totals and metadata
-- serve proposal PDFs
-- show historical parliamentary terms
-- hide rejected, draft, and active records
-
----
-
-## 3. Recommended technology stack
+### Recommended technology stack
 
 | Component | Technology |
 | --- | --- |
 | Admin and public websites | React + Vite |
-| Backend / API | Python + FastAPI |
-| Database for prototype | SQLite |
-| PDF storage | Local server folder initially |
+| Backend/API | Python + FastAPI |
+| Database for the prototype | SQLite |
+| Server-side PDF storage | Local folder initially |
 | ESP32 firmware | Arduino framework using PlatformIO in VS Code |
-| Fingerprint sensor | AS608 + compatible UART library |
-| TFT display | ILI9488-compatible library |
-| Communication | Wi-Fi + HTTP/HTTPS REST API |
-| Testing | browser tests, API tests, hardware tests |
+| Fingerprint sensor | AS608 with a compatible UART library |
+| TFT display | ILI9488-compatible display library |
+| Communication | Wi‑Fi + HTTP/HTTPS REST API |
+| Testing | Browser, API tests, and hardware tests |
 | Version control | Git + GitHub |
 
-Important prototype decision:
-- keep everything local at first
-- run the backend and database on the same machine as development
-- connect ESP32 to the same local Wi-Fi network
-- secure remote deployment and HTTPS can be added later
+Keep the first version local. Run the server and database on your existing computer, and connect the ESP32 to the same Wi‑Fi network. You can consider hosting and secure remote access after the local prototype is working.
 
----
+## 2. Development roadmap from A to Z
 
-## 4. Development principles
+Follow these phases in order. Don’t begin building the entire application at once.
 
-1. Build one module at a time.
-2. Test each device before integration.
-3. Keep the backend as the source of truth for all validation.
-4. Treat the ESP32 as a client, not as the authority for voting rules.
-5. Store only fingerprint template references, not raw biometric data.
-6. Use a server-managed voting deadline and finalization process.
-7. Keep draft and rejected proposals hidden from the public archive.
+### Phase 0 — Freeze the requirements
 
----
+Deliverable: a fixed feature list and workflow.
 
-## 5. Development roadmap (A to Z)
-
-### Phase 0 — Freeze requirements
-Deliverable: a fixed feature list and working workflow.
-
-Required rules:
 - Main Host approves or rejects proposed sessions.
 - Assistant Host manages member registration, fingerprint enrollment, parliamentary terms, and bill preparation.
-- A bill contains a Bangla/English title, a detailed question, options, a session duration, and a complete PDF proposal.
+- A bill has a Bangla/English title, a detailed voting question, voting options, a session duration, and a complete proposal PDF.
 - Members authenticate by fingerprint and vote through the ESP32 terminal.
-- Members may revise their vote only while the session is active and only if revision is enabled.
+- Members may revise their vote only while the session is active, if revision is enabled.
 - The server finalizes results and publishes the approved record to the public archive.
 
 ### Phase 1 — Prepare the development environment
-Deliverable: working tools and an initial project setup.
 
-Tasks:
-- install or verify Python, VS Code, Git, Node.js, and PlatformIO
-- create the project repository
-- initialize a Python virtual environment
-- create a minimal FastAPI backend
-- create a minimal React website
-- confirm the frontend can communicate with the backend
+Deliverable: tools installed and a working GitHub repository.
+
+- Install or verify Python, VS Code, Git, Node.js, and PlatformIO.
+- Create a project folder and initialize Git.
+- Create a Python virtual environment.
+- Create a minimal FastAPI server and a minimal React website.
+- Confirm the website can call the backend on your computer.
 
 ### Phase 2 — Test the hardware separately
-Deliverable: each hardware component works independently.
 
-Hardware validation order:
-1. ESP32 basic LED blink test
-2. buzzer tone test
-3. button input test
-4. Wi-Fi connection and reconnection test
-5. AS608 wiring and fingerprint enrollment test
-6. AS608 matching and template verification test
-7. TFT display text and button layout test
-8. Bangla and English text rendering test
-9. memory and display limit checks
+Deliverable: each physical component works independently.
+
+1. Upload a basic ESP32 LED blink program.
+2. Connect the buzzer and test its tones.
+3. Connect the buttons and read presses.
+4. Test Wi‑Fi connection and reconnection.
+5. Wire the AS608 sensor to the ESP32 UART pins and test fingerprint enrollment and matching.
+6. Connect the ILI9488 TFT and display text, colours, and voting buttons.
+7. Test Bangla and English text rendering, including font memory and layout limitations.
 
 ### Phase 3 — Build the database and backend
-Deliverable: functional backend and storage layer for test records.
 
-Required features:
-- create tables for users, parliamentary terms, memberships, fingerprint references, bills, documents, sessions, votes, audit logs, and publication records
-- implement APIs for creating, editing, approving, starting, and closing sessions
-- upload and store proposal PDFs on disk
-- save PDF metadata in the database
-- implement server-side vote validation and session deadlines
-- create test data for a mock parliament
+Deliverable: an API and database that can store and retrieve test records.
+
+- Create tables for users, parliamentary terms, fingerprint references, bills, sessions, votes, audit events, and publication records.
+- Implement the API for creating, editing, approving, starting, closing, and retrieving sessions.
+- Store proposal PDFs on the server and save their metadata and storage path in the database.
+- Implement the session deadline and server-side vote validation.
+- Add test data for a small mock parliament.
 
 ### Phase 4 — Build the administrative website
-Deliverable: complete admin control panel.
 
-Admin features:
-- login and role-based access
-- parliamentary term management
-- member management
-- member registration and fingerprint enrollment workflow
-- bill creation form with Bangla/English text
-- PDF upload form
-- session preview and submission
-- Main Host approval/rejection process
-- session monitoring dashboard
-- active session indicators, remaining time, and participation stats
+Deliverable: Main Host and Assistant Host can manage the system from a browser.
+
+- Create login and role-based access.
+- Create parliamentary-term and member management pages.
+- Create a fingerprint enrollment workflow that links a sensor template ID to the correct member.
+- Create the bill preparation form with Bangla/English text inputs and PDF upload.
+- Create a session preview and submission page.
+- Create Main Host approval/rejection and session-monitoring pages.
+- Display the active session, remaining time, participation count, and network/device status.
 
 ### Phase 5 — Connect the ESP32 to the server
-Deliverable: device receives and displays the active session over Wi-Fi.
 
-ESP32 tasks:
-- store Wi-Fi credentials securely
-- give each terminal a unique device ID
-- fetch the active session from the API
-- display session title, question, options, and status
-- show loading, disconnected, reconnecting, and error states
-- do not rely on local device time for vote permission checks
+Deliverable: the device can display a session received over Wi‑Fi.
+
+- Configure the Wi‑Fi credentials safely.
+- Give the device a unique ID.
+- Implement API requests to fetch the current session.
+- Display the bill title, question, available options, and session status.
+- Add loading, disconnected, reconnecting, and server-error screens.
+- Ensure the terminal does not rely on its own clock to decide whether voting is still permitted.
 
 ### Phase 6 — Implement fingerprint voting
-Deliverable: a valid member can cast a verified vote.
 
-Voting flow:
-- member scans a finger
-- AS608 matches the fingerprint
-- backend verifies membership, term status, session status, deadline, and vote rules
-- matched template ID and vote choice are sent to backend
-- response indicates success or failure
-- TFT displays confirmation
-- buzzer and LEDs provide feedback
+Deliverable: an eligible mock member can cast a verified vote.
+
+- Ask the member to scan a finger.
+- Match the scan using the AS608 sensor.
+- Send the matched template ID and requested vote to the backend.
+- Let the backend verify membership, term eligibility, session state, deadline, and duplicate/revision rules.
+- Return a clear success or failure response to the device.
+- Give a confirmation on the TFT and use the buzzer/LEDs for feedback.
 
 ### Phase 7 — Build the public website and archive
-Deliverable: finalized bills are publicly visible.
 
-Public features:
-- home page with finalized bill listing
-- search and filters by term, title, and date
-- bill detail page showing question, options, totals, and proposal PDF
-- historical parliamentary term pages
-- exclusion of draft, rejected, and active records
+Deliverable: visitors can find finalized bills and their results.
+
+- Create a public home page and finalized-bills listing.
+- Add search and filters by parliamentary term, bill title, and date.
+- Create a bill detail page showing the question, voting options, final totals, and proposal PDF.
+- Add historical term pages.
+- Ensure drafts, rejected proposals, and active sessions are not exposed as finalized public records.
 
 ### Phase 8 — Security, reliability, and integration
-Deliverable: the full prototype works under normal and failure conditions.
 
-Required improvements:
-- protect admin accounts and restrict actions by role
-- validate uploaded PDF type and size
-- use HTTPS when deployed outside a trusted local network
-- make vote submission safe to retry without double-counting
-- maintain revision and audit trails
-- test Wi-Fi loss, device restarts, repeated scans, expired sessions, and simultaneous requests
-- back up database and uploaded files together
+Deliverable: the complete system behaves correctly during normal use and failures.
+
+- Protect administrative accounts and restrict actions by role.
+- Validate file type and size for proposal PDFs.
+- Use HTTPS when deployed beyond a trusted local development network.
+- Make vote submission safe to retry without accidentally counting a vote twice.
+- Keep a revision/audit trail.
+- Test Wi‑Fi loss, device restarts, repeated scans, expired sessions, and simultaneous requests.
+- Back up the database and proposal files together.
 
 ### Phase 9 — Final demonstration and documentation
-Deliverable: a repeatable demo and complete project record.
 
-Demo sequence:
-- run a mock parliamentary term
-- register sample members
-- prepare a sample bill and upload its PDF
-- submit the bill for Main Host approval
-- conduct fingerprint voting
-- verify final counts
-- publish the result
-- confirm the public archive shows the finalized bill and PDF
+Deliverable: a repeatable, documented end-to-end demonstration.
 
-Documentation to prepare:
-- circuit diagram
-- database diagram
-- API documentation
-- screenshots
-- test results
-- project report
+- Run a mock parliamentary term with sample members.
+- Prepare a sample bill and upload its PDF.
+- Submit it for Main Host approval.
+- Conduct fingerprint voting.
+- Verify the final count and publish the result.
+- Confirm the PDF and result appear in the public archive.
+- Prepare the circuit diagram, database diagram, API documentation, screenshots, test results, and project report.
 
----
+## 3. Create the project folder structure
 
-## 6. Database design
-
-The backend database should contain these main records:
-
-| Table | Purpose |
-| --- | --- |
-| users | hosts, members, roles, and account status |
-| parliamentary_terms | parliamentary terms and their current status |
-| term_memberships | which members belong to which term |
-| fingerprint_references | AS608 template IDs linked to members |
-| bills | bill title, question, languages, metadata |
-| documents | proposal PDF path, size, checksum |
-| sessions | session status, times, options, and approval state |
-| votes | latest accepted vote per member per session |
-| vote_audit | accepted revisions and vote events |
-| audit_events | admin actions, approvals, and system events |
-
-Important rules:
-- store only fingerprint template references, never raw biometric data
-- enforce a unique record for each member/session vote
-- record vote revisions in an audit table if revision is allowed
-- keep PDFs outside the database and store metadata only in the DB
-- let the server decide the final vote acceptance and deadline logic
-
----
-
-## 7. Main API endpoints
-
-### Administrative endpoints
-- POST /api/auth/login
-- GET /api/terms
-- POST /api/members
-- POST /api/bills
-- POST /api/bills/{id}/document
-- POST /api/sessions
-- POST /api/sessions/{id}/approve
-- POST /api/sessions/{id}/reject
-- POST /api/sessions/{id}/start
-- GET /api/sessions/{id}/results
-
-### ESP32 device endpoints
-- GET /api/device/session
-- POST /api/device/vote
-
-### Public endpoints
-- GET /api/public/bills
-- GET /api/public/bills/{id}
-- GET /api/public/bills/{id}/document
-
-Notes:
-- these are proposed API names and will be implemented gradually
-- admin endpoints must enforce role checks
-- device endpoints must identify the terminal and validate session state securely
-
----
-
-## 8. Session state machine
-
-The system should use a clear and controlled voting lifecycle.
-
-Draft
-  -> Assistant Host prepares the bill and document
-
-Pending Approval
-  -> waiting for Main Host review
-
-Approved
-  -> authorized to begin
-
-Active
-  -> accepts valid votes until deadline or closure
-
-Finalized
-  -> votes are locked and the result is published
-
-Rejected
-  -> proposal is rejected and remains non-public
-
-Critical rules:
-- sessions should not be switched on/off manually without proper server logic
-- when a session expires, the backend must stop accepting new votes and finalize the result
-- a device showing an old active screen must never override the server-authorized session state
-- the public archive should show only finalized results, not individual member choices
-
----
-
-## 9. Suggested development schedule
-
-| Week | Target |
-| --- | --- |
-| 1 | requirements, project structure, tool verification |
-| 2 | ESP32 hardware tests: LED, buzzer, buttons, sensor, TFT |
-| 3 | database schema and basic backend API |
-| 4 | admin login and member/term management |
-| 5 | bill preparation, Bangla/English text, PDF upload |
-| 6 | Main Host approval and session controls |
-| 7 | ESP32 Wi-Fi and active-session display |
-| 8 | fingerprint voting and vote submission |
-| 9 | finalization, result generation, public archive |
-| 10 | security, integration tests, bug fixes, demo prep |
-
-Allow extra time if TFT drivers, Bangla rendering, fingerprint enrollment, or network reliability create issues.
-
----
-
-## 10. Final testing checklist
-
-### Prototype readiness
-- [ ] ESP32 starts reliably
-- [ ] AS608 enrollment and matching work
-- [ ] TFT displays readable English text
-- [ ] Bangla text rendering is verified
-- [ ] buttons, LEDs, and buzzer work
-
-### Administration
-- [ ] Assistant Host can register members
-- [ ] Assistant Host can upload a PDF proposal
-- [ ] Main Host can approve or reject a session
-- [ ] unauthorized roles cannot perform restricted actions
-
-### Voting
-- [ ] only eligible members can vote
-- [ ] invalid fingerprints are rejected
-- [ ] duplicate requests do not double-count votes
-- [ ] allowed vote revisions update the latest vote
-- [ ] votes are rejected after the server deadline
-- [ ] network failure does not falsely confirm a vote
-
-### Publication
-- [ ] final result matches accepted votes
-- [ ] finalized bill and PDF appear in public archive
-- [ ] draft and rejected proposals remain private
-- [ ] historical parliamentary terms remain searchable
-- [ ] database and PDF backups can be restored
-
----
-
-## 11. Project folder structure
+Use one Git repository for the complete project. Keep the website, server, and ESP32 firmware in separate folders.
 
 ```text
 parliament-voting-system/
+│
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
@@ -442,20 +216,157 @@ parliament-voting-system/
 │   └── testing.md
 │
 ├── .gitignore
-├── README.md
-└── .git
+└── README.md
 ```
 
-Start by creating the folders only. Add files when each phase begins.
+Create only the folders initially. We will add the files when their respective phases begin. The two websites can eventually share common components, but keeping them separate initially makes permission and maintenance easier.
 
----
+## 4. Design the database before building the screens
 
-## 12. First milestone: environment setup
+These are the main records the backend needs.
 
-1. create the project folder
-2. open it in VS Code
-3. open the integrated terminal
-4. verify the tools:
+| Table | Purpose |
+| --- | --- |
+| users | Hosts, members, roles, account status |
+| parliamentary_terms | Five-year terms and their status |
+| term_memberships | Which members belong to which term |
+| fingerprint_references | Sensor template IDs linked to members |
+| bills | Bill title, detailed question, languages, and metadata |
+| documents | Proposal PDF path, size, and checksum |
+| sessions | Approval, start/end time, options, and session status |
+| votes | The latest accepted vote for each member and session |
+| vote_audit | Accepted revisions and relevant vote events |
+| audit_events | Administrative changes, approvals, and other important actions |
+
+Important design rules:
+
+- Store the AS608 template reference, not raw fingerprint images or biometric data in the website database. The sensor's template storage and capacity must be tested.
+- Use a unique constraint on each member/session vote record so duplicate network requests cannot create duplicate votes.
+- Record revisions in an audit table if changing a vote is permitted.
+- Store PDFs outside the database and retain their metadata in it.
+- Make the server the authority for the voting deadline, eligibility, vote acceptance, and final totals.
+
+## 5. Define the main API endpoints
+
+The API is the connection between the websites, the database, and the ESP32.
+
+| Endpoint | Purpose |
+| --- | --- |
+| POST /api/auth/login | Administrative login |
+| GET /api/terms | List parliamentary terms |
+| POST /api/members | Register a member |
+| POST /api/bills | Create bill metadata |
+| POST /api/bills/{id}/document | Upload proposal PDF |
+| POST /api/sessions | Submit a proposed session |
+| POST /api/sessions/{id}/approve | Main Host approves |
+| POST /api/sessions/{id}/reject | Main Host rejects |
+| POST /api/sessions/{id}/start | Start an approved session |
+| GET /api/device/session | ESP32 fetches active session |
+| POST /api/device/vote | Submit a member's vote |
+| GET /api/sessions/{id}/results | Retrieve authorized results |
+| GET /api/public/bills | List finalized public bills |
+| GET /api/public/bills/{id} | Read a finalized bill |
+| GET /api/public/bills/{id}/document | Access its published proposal PDF |
+
+These are proposed endpoint names, not existing code. We will implement and test them gradually. Administrative endpoints must enforce role permissions, and device endpoints must identify and authorize the terminal and voting state correctly.
+
+## 6. Define the voting session state machine
+
+A session should move through controlled states rather than being switched on and off arbitrarily.
+
+### 1. Draft
+
+Assistant Host prepares bill and PDF.
+
+### 2. Pending Approval
+
+Waiting for Main Host.
+
+### 3. Approved
+
+Authorized to start.
+
+### 4. Active
+
+Accept valid votes until deadline or closure.
+
+### 5. Finalized
+
+Votes locked and result published.
+
+Rejection returns a proposal to a non-active rejected state. Any resubmission or reopening should follow explicit authorization rules.
+
+When a session expires, the backend must stop accepting new votes and finalize the result through a reliable server-side process. A device displaying an old “active” screen must never override the current server-authorized session state.
+
+For an academic prototype, define whether the public result includes only final totals or also individual participation information. Do not publish individual members’ vote choices by default.
+
+## 7. Suggested development schedule
+
+This is a planning estimate, not a guaranteed completion date.
+
+| Week | Target |
+| --- | --- |
+| 1 | Requirements, development tools, GitHub repository |
+| 2 | ESP32, buttons, buzzer, TFT, and AS608 individual tests |
+| 3 | Database schema and basic backend APIs |
+| 4 | Login, member management, parliamentary terms |
+| 5 | Bill preparation, Bangla/English text, PDF uploads |
+| 6 | Main Host approval and session controls |
+| 7 | ESP32 Wi‑Fi connection and active-session display |
+| 8 | Fingerprint authentication and vote submission |
+| 9 | Finalization, result calculations, public archive |
+| 10 | Security, integration tests, bug fixes, and demonstration |
+
+Allow additional time if the TFT driver, Bangla font rendering, fingerprint enrollment, or network reliability needs troubleshooting.
+
+## 8. Final testing checklist
+
+### Prototype readiness
+
+0/20 checked
+
+### Hardware
+
+- ESP32 starts reliably
+- AS608 enrollment and matching work
+- TFT displays readable English text
+- Bangla font rendering has been tested
+- Buttons, LEDs, and buzzer work
+
+### Administration
+
+- Assistant Host can register members
+- Assistant Host can upload a proposal PDF
+- Main Host can approve or reject a session
+- Unauthorized roles cannot perform restricted actions
+
+### Voting
+
+- Only eligible members can vote
+- Invalid fingerprints are rejected
+- Duplicate requests do not double-count votes
+- Permitted vote revisions update the latest vote
+- Votes are rejected after the server deadline
+- Network failure does not falsely confirm a vote
+
+### Publication
+
+- Final result matches accepted votes
+- Finalized bill and PDF appear in public archive
+- Draft and rejected proposals stay private
+- Past parliamentary terms remain searchable
+- Database and PDF backups can be restored
+
+Copy checklist
+
+## 9. Start now: Step 1
+
+Don’t connect all the hardware yet. First, prepare the development environment and verify the tools.
+
+1. Create a folder named parliament-voting-system.
+2. Open that folder in VS Code.
+3. Open the integrated terminal.
+4. Check the following commands one at a time:
 
 ```bash
 python3 --version
@@ -464,34 +375,19 @@ node --version
 npm --version
 ```
 
-If any command is missing, install it before continuing.
+If a command returns “command not found,” stop and install or configure that tool before proceeding. For ESP32 development, we will also install and configure PlatformIO in VS Code.
 
-Then initialize Git:
+5. Initialize the repository:
 
 ```bash
 git init
 mkdir -p backend admin-website public-website esp32-firmware docs
 ```
 
-Create a `.gitignore` file to prevent sensitive data, password files, databases with real data, and private upload files from being committed.
+6. Create a .gitignore file so passwords, environment files, database files containing real data, and private uploads are not accidentally committed to GitHub.
 
-Goal of this first milestone:
-- repository is ready
-- tools are installed and functional
-- project structure is established
+Our first milestone: the project folder is ready, Git works, and we know which development tools are installed.
 
-Once this works, the next step is to build the smallest possible FastAPI backend and a minimal React page, confirm they connect, and then move to hardware testing.
+Once that is verified, the next step is to build the smallest possible FastAPI backend and React page, test their connection, and then move to the individual ESP32 hardware tests.
 
----
-
-## 13. Final note
-
-This is an academic prototype, not a production-grade parliamentary election system. A real deployment would require a much higher level of security, accessibility review, independent testing, and formal operational governance.
-
-The purpose of this project is to demonstrate a working, testable prototype that proves the concept end to end.
-
----
-
-## 14. Suggested project summary sentence
-
-Build an IoT-based smart voting system where members authenticate by fingerprint on an ESP32 terminal, submit votes through a local Wi-Fi API, and have the final results published to a public bill archive after server-side validation and finalization.
+This plan is for an academic prototype. A real parliamentary deployment would require a substantially higher level of security, independent testing, accessibility review, and formal operational authority.
