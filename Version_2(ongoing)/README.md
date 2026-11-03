@@ -1,24 +1,52 @@
-# RFID-Based Smart Electronic Voting System Using ESP32
+# IoT-Based Digital Voting and Public Bill Archive System
 
-A smart electronic voting system built with an **ESP32 microcontroller**, an **RC522 RFID module**, push buttons, LEDs, and a buzzer. The system authenticates voters using RFID cards, prevents duplicate voting, supports vote undo, runs a timed voting session, and produces a final result with voter-level accountability tracking.
+A fingerprint-authenticated digital voting terminal built around an **ESP32**, an **AS608 (DY50) fingerprint sensor** and a **3.5" ILI9488 touch TFT**, connected over Wi-Fi to a central server, an administrative website and a public bill archive.
+
+This is an **academic prototype**. A real parliamentary deployment would need a much higher level of security, independent testing, accessibility review and formal operational authority.
 
 ---
 
 ## 📌 Project Overview
 
-This project allows users to:
+The complete system has four parts:
 
-- Authenticate using an RFID card
-- Participate in an active voting session
-- Vote **YES** or **NO**
-- Prevent duplicate voting
-- Undo a vote before the session ends
-- Receive real-time **LED** and **buzzer** feedback
-- Automatically close voting after a set session time
-- View the final result (YES / NO / DRAW)
-- Track voter UID and voting activity for accountability
+```
+Administrative Website  (Main Host + Assistant Host, desktop browser)
+        │  Wi-Fi / local network / HTTPS API
+        ▼
+Central Server + Database  (users, fingerprint reference IDs, bills, sessions, votes, results, audit records)
+        │  Wi-Fi / API
+        ▼
+ESP32 Voting Terminal  (ESP32 + AS608 + 3.5" TFT touch + buttons + LEDs + buzzer)
+        │  published finalized records
+        ▼
+Public Website and Bill Archive  (final results, proposal PDFs, bill details, historical terms)
+```
 
-The project combines **Embedded Systems**, **IoT**, **RFID Technology**, **Digital Logic**, and **Microcontroller Programming**.
+Planned features:
+
+- Members authenticate with a **fingerprint** and vote on the ESP32 terminal
+- Bills have a Bangla/English title, a detailed voting question, voting options, a session duration and a full proposal PDF
+- **Main Host** approves or rejects sessions; **Assistant Host** manages members, fingerprint enrollment, terms and bill preparation
+- The **server** is the authority for deadline, eligibility, vote acceptance and final totals
+- Members may revise their vote only while the session is active (if enabled)
+- Final results and PDFs are published to a searchable public archive
+
+---
+
+## 🚦 Current Status (end of Day 3)
+
+The ESP32 terminal hardware is working on its own. Nothing is connected to Wi-Fi or a server yet.
+
+| Item | Status |
+|---|---|
+| ESP32 upload and Serial Monitor | ✅ Working |
+| 3.5" ILI9488 TFT display | ✅ Working |
+| XPT2046 touch panel (calibrated, saved to flash) | ✅ Working |
+| AS608 fingerprint sensor (enroll / test / delete / erase all) | ✅ Working through the touch menu |
+| Buttons, LEDs, buzzer | ⬜ Not wired yet |
+| Wi-Fi + API connection | ⬜ Not started |
+| Backend, database, admin site, public site | ⬜ Not started |
 
 ---
 
@@ -26,320 +54,438 @@ The project combines **Embedded Systems**, **IoT**, **RFID Technology**, **Digit
 
 | Component | Purpose |
 |---|---|
-| ESP32 Dev Board (CP2102) | Main microcontroller |
-| RC522 RFID Module | RFID card reading and authentication |
-| RFID Cards/Tags | Voter identification |
-| Push Buttons (x3) | YES, NO, and UNDO voting controls |
-| LEDs | Visual system feedback |
-| Buzzer | Audio feedback |
-| Breadboard | Circuit prototyping |
-| Jumper Wires | Component connections |
-| Micro-USB Data Cable | Programming and powering the ESP32 |
-
-**Board used:** ESP32 Development Board with **CP2102 USB-to-UART converter**, using a **Micro-USB** port (not USB-C).
+| ESP32 DevKit V1 (30-pin, Micro-USB) | Main microcontroller |
+| DY50 fingerprint module (AS608 chip) | Fingerprint enrollment and matching |
+| 3.5" SPI TFT, 480x320, with resistive touch (XPT2046) | Display and touch menu |
+| Push buttons, LEDs, buzzer | Extra feedback (planned) |
+| Breadboard and jumper wires | Prototyping, shared 3.3 V and GND rails |
+| Digital multimeter | Voltage and continuity checks |
+| Micro-USB **data** cable | Programming and power |
 
 ---
 
 ## 🔌 Pin Configuration
 
-| Component | ESP32 GPIO |
-|---|---:|
-| RFID SS/SDA | GPIO 5 |
-| RFID RST | GPIO 22 |
-| YES Button | GPIO 32 |
-| NO Button | GPIO 33 |
-| UNDO Button | GPIO 25 |
-| Session Control | GPIO 16 |
-| Authentication LED | GPIO 13 |
-| Time LED | GPIO 14 |
-| Enable LED | GPIO 2 |
-| Duplicate LED | GPIO 17 |
-| Event LED | GPIO 21 |
-| YES LED | GPIO 26 |
-| NO LED | GPIO 4 |
-| UNDO LED | GPIO 27 |
-| Buzzer | GPIO 15 |
+### ESP32 pin map (labels as printed on the board)
 
-### RFID (RC522) SPI Wiring
+| ESP32 pin | GPIO | Connects to | Function |
+|---|---:|---|---|
+| VIN | 5 V | TFT VCC | Display power (jumper J1 open) |
+| 3V3 | 3.3 V | TFT LED, DY50 3V3, DY50 T-3V3 | Backlight, sensor power, touch-ring power |
+| GND | 0 V | TFT GND, DY50 GND | Common ground |
+| D5 | 5 | TFT CS | Display chip select |
+| D18 | 18 | TFT SCK + T_CLK | Shared SPI clock |
+| D19 | 19 | TFT T_DO **only** | SPI MISO (touch data out) |
+| D23 | 23 | TFT SDI (MOSI) + T_DIN | Shared SPI MOSI |
+| D26 | 26 | TFT RESET | Display reset |
+| D27 | 27 | TFT DC/RS | Data / command |
+| D25 | 25 | TFT T_CS | Touch chip select |
+| D33 | 33 | TFT T_IRQ | Touch interrupt (optional, unused in code) |
+| RX2 | 16 | DY50 **TX** | Fingerprint UART receive |
+| TX2 | 17 | DY50 **RX** | Fingerprint UART transmit |
+| D34 | 34 | DY50 T-OUT | Finger-present signal (optional, input-only pin) |
 
-| RC522 Pin | ESP32 Pin |
+Pins for the buttons, LEDs and buzzer are **not assigned yet**. They will be chosen from the free GPIOs when that hardware is added (avoid TX0/RX0, and be careful with strapping pins such as GPIO 0, 2, 12 and 15).
+
+### TFT header (left to right)
+
+`T_IRQ` · `T_DO` · `T_DIN` · `T_CS` · `T_CLK` · `SDO(MISO)` · `LED` · `SCK` · `SDI(MOSI)` · `DC/RS` · `RESET` · `CS` · `GND` · `VCC`
+
+> ⚠️ **Leave the TFT `SDO(MISO)` pin unconnected.** The ILI9488 does not release the MISO line when its chip select is high, so if it shares D19 with the touch `T_DO` it corrupts the touch data. The display only needs to receive data, so nothing is lost.
+
+### DY50 / AS608 (6-pin connector)
+
+| DY50 pin | ESP32 |
 |---|---|
-| SDA/SS | GPIO 5 |
-| SCK | GPIO 18 |
-| MOSI | GPIO 23 |
-| MISO | GPIO 19 |
-| RST | GPIO 22 |
-| VCC | 3.3V |
 | GND | GND |
+| RX | TX2 (GPIO 17) |
+| TX | RX2 (GPIO 16) |
+| 3V3 | 3V3 |
+| T-OUT | D34 (optional) |
+| T-3V3 | 3V3 |
 
-All buttons use `INPUT_PULLUP` (normal state = HIGH, pressed = LOW), which removes the need for external pull-up resistors.
+TX/RX are named from the module's point of view, so they **cross over**.
 
----
+### Power rules
 
-## 🧠 How It Works
-
-1. On boot, the ESP32 asks for the **voting question** and **session time** (in seconds) via the Serial Monitor.
-2. Once entered, the voting session starts — the `SESSION`, `ENABLE_LED`, and `TIME_LED` pins go HIGH.
-3. Voters scan their RFID card:
-   - **New card** → registered as a new voter, authentication LED and beep confirm success.
-   - **Existing card, not yet voted** → allowed to vote.
-   - **Existing card, already voted** → rejected with a duplicate alert (LED + higher-pitch beep).
-4. The authenticated voter presses **YES** or **NO** to cast a vote. The vote is locked to that voter's UID.
-5. The **UNDO** button lets the currently active voter cancel their vote before the session ends.
-6. When the session timer expires:
-   - Voting is locked (`systemLocked = true`)
-   - Final results are calculated and printed to Serial
-   - The system shuts down its indicators until the ESP32 is reset
-
-### Voting Logic (AND-gate style condition)
-
-A vote is only accepted when **all** of the following are true:
-
-```
-RFID User Authenticated
-        AND
-Voting Session Active
-        AND
-System Not Locked
-        AND
-User Has Not Already Voted
-        ↓
-   Voting Enabled
-```
-
-### System Workflow
-
-```
-POWER ON ESP32
-      ↓
-Enter Voting Question
-      ↓
-Enter Session Time
-      ↓
-Voting Session Starts
-      ↓
-RFID Card Scan → New or Existing?
-      ↓
-Duplicate? ──Yes──> Reject + Alert
-      │
-      No
-      ↓
-YES / NO Selection → Store Vote → LED + Buzzer Feedback
-      ↓
-Wait for Session Timer
-      ↓
-Session Ends → Calculate Result → Show Winner & Stats
-      ↓
-System Shutdown (reset to start a new session)
-```
+- TFT VCC takes 5 V from **VIN**, with solder jumper **J1 open**. (Alternative: bridge J1 and feed VCC from 3V3. Never mix the two.)
+- The fingerprint sensor stays on **3.3 V only**.
+- The ESP32 has only one 3V3 pin, so use a breadboard 3.3 V rail for the three 3.3 V wires.
+- All grounds must be joined.
+- Never connect 5 V to any ESP32 GPIO pin.
 
 ---
 
-## 🗂️ Voter Data & Accountability
+## ⚙️ Software Configuration
 
-Each voter is tracked using a `Voter` struct:
+### Arduino IDE (hardware tests)
+
+1. Install the Arduino IDE and the **ESP32 by Espressif Systems** board package.
+2. Select **Tools → Board → ESP32 Dev Module** and the correct port.
+3. Install the libraries **TFT_eSPI** (Bodmer) and **Adafruit Fingerprint Sensor Library**. `Preferences` is built in.
+4. Replace the contents of `Arduino/libraries/TFT_eSPI/User_Setup.h` with the settings below. In `User_Setup_Select.h` only `#include <User_Setup.h>` should be active.
+5. **Quit and reopen the Arduino IDE** after editing the setup file.
+6. Open the Serial Monitor at **115200 baud**.
 
 ```cpp
-struct Voter {
-  String uid;
-  bool voted;
-  int vote;              // 1 = YES, 0 = NO, -1 = not voted
-  unsigned long firstSeen;
-  unsigned long voteTime;
-};
+#define ILI9488_DRIVER       // if the screen stays white/garbled, try ST7796_DRIVER
+
+#define TFT_MISO 19
+#define TFT_MOSI 23
+#define TFT_SCLK 18
+#define TFT_CS    5
+#define TFT_DC   27
+#define TFT_RST  26
+#define TOUCH_CS 25          // enables getTouch / setTouch / calibrateTouch
+
+#define LOAD_GLCD
+#define LOAD_FONT2
+#define LOAD_FONT4
+#define SMOOTH_FONT
+
+#define SPI_FREQUENCY       20000000
+#define SPI_READ_FREQUENCY  16000000
+#define SPI_TOUCH_FREQUENCY  2500000
 ```
 
-The system stores up to **20 voters** (`MAX_VOTERS`) per session and records, for each voter:
+### PlatformIO (final firmware)
 
-- RFID UID
-- Vote cast (YES / NO / none)
-- Time first detected (`firstSeen`)
-- Time the vote was cast (`voteTime`)
-- Decision time (`voteTime - firstSeen`)
+The final firmware will be built with the Arduino framework in PlatformIO (VS Code), inside `esp32-firmware/`. The prototype sketches below are used to prove each part of the hardware first.
 
-At the end of a session, results are printed in this format:
+### Prototype sketches
 
-```
-===== FINAL RESULT =====
-QUESTION: <your question>
-YES COUNT: <n>
-NO COUNT: <n>
-WINNER: YES WINS 🟢 / NO WINS 🔴 / DRAW
-
-UID | VOTE | WIN_TIME(s) | LOSE_TIME(s) | DIFF(s)
-```
-
----
-
-## 💻 Full Source Code
-
-The complete Arduino sketch (`voting_system.ino`) is included in this repository. Key libraries used:
-
-```cpp
-#include <Arduino.h>
-#include <SPI.h>
-#include <MFRC522.h>
-```
-
-- **Arduino.h** — core Arduino functionality
-- **SPI.h** — required for SPI communication with the RC522 module
-- **MFRC522.h** — handles RFID card detection, UID reading, and communication with the RC522
-
-> See [`voting_system.ino`](./voting_system.ino) in this repo for the full code.
-
----
-
-## 🖥️ Simulation
-
-A live simulation of the circuit and code is available on Wokwi:
-
-**Simulation Link (Wokwi Project):**
-[https://wokwi.com/projects/462842720344631297](https://wokwi.com/projects/462842720344631297)
-
-Hardware and software video simulation: https://www.linkedin.com/posts/md-arif-oyion_esp32-rfid-embeddedsystems-activity-7471774511030247424-aBE6?utm_source=share&utm_medium=member_desktop&rcm=ACoAADI2ZkoBOPomn2vd2kZm5vHga4MbHUtKsKY
----
-
-## ⚙️ Arduino IDE Setup Guide
-
-### 1. Install Arduino IDE
-
-Download and install the [Arduino IDE](https://www.arduino.cc/en/software).
-
-### 2. Add ESP32 Board Support
-
-Go to:
-```
-File → Preferences   (or "Arduino IDE → Settings" on some versions)
-```
-
-Under **Additional Board Manager URLs**, add:
-```
-https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-```
-
-Click **OK**.
-
-### 3. Install the ESP32 Board Package
-
-Go to:
-```
-Tools → Board → Boards Manager
-```
-
-Search for **ESP32** and install **"ESP32 by Espressif Systems"**.
-
-### 4. Connect the ESP32 and Select Port
-
-Connect the ESP32 (CP2102) board using a **working Micro-USB data cable** (see the USB troubleshooting section below — this matters more than you'd expect!).
-
-Then go to:
-```
-Tools → Port
-```
-and select the COM port that appears (e.g. `COM3`, `COM4`, etc.).
-
-### 5. Select the Correct Board
-
-Go to:
-```
-Tools → Board → ESP32 Arduino → ESP32 Dev Module
-```
-
-| Setting | Selection |
+| Sketch | Purpose |
 |---|---|
-| Board | ESP32 Dev Module |
-| USB Converter | CP2102 |
-| USB Port Type | Micro-USB |
-| Port | Your assigned COM port |
-
-### 6. Install Required Libraries
-
-Go to:
-```
-Sketch → Include Library → Manage Libraries
-```
-
-Search for and install:
-```
-MFRC522
-```
-
-(`SPI` and `Arduino` core libraries are included by default.)
-
-### 7. Test the Board (Optional but Recommended)
-
-Before wiring the full circuit, upload a simple blink sketch to confirm the board, cable, and COM port all work correctly:
-
-```cpp
-void setup() {
-  pinMode(2, OUTPUT);
-}
-
-void loop() {
-  digitalWrite(2, HIGH);
-  delay(1000);
-  digitalWrite(2, LOW);
-  delay(1000);
-}
-```
-
-GPIO 2 is also used as `ENABLE_LED` in the final project, so this doubles as a good sanity check.
-
-### 8. Upload the Final Code
-
-Open `voting_system.ino`, select the correct board and port, then click **Upload**. Open the **Serial Monitor** at **115200 baud** to interact with the system (enter the question and session time).
+| `touch_test.ino` | Touch calibration and drawing test (also prints `calData`) |
+| `fingerprint_touch_app.ino` | Touch menu: **ENROLL / DELETE / TEST / ERASE ALL**, touch calibration saved to flash |
 
 ---
 
-## 🔧 USB Cable Troubleshooting (Real Issue We Faced)
+## 🧠 How the Current Terminal Works
 
-Our ESP32 board used an older-style **Micro-USB** port instead of USB-C, and it did **not** come with a USB cable in the box. This turned out to be one of the biggest early roadblocks.
+`fingerprint_touch_app.ino` shows a touch menu and a header with the number of stored fingerprints.
 
-**What happened:**
+| Button | Action |
+|---|---|
+| **ENROLL** | Takes the first free ID, asks for the finger twice, stores the template and shows the ID |
+| **DELETE** | Scan a finger; the matching ID is deleted |
+| **TEST** | Scan a finger; shows `MATCH` with ID and score, or `ACCESS DENIED` |
+| **ERASE ALL** | Two taps within 3 seconds wipe every stored fingerprint |
 
-- We first tried old Micro-USB phone cables (our own and teammates').
-- The ESP32 would receive **power** through these cables, but the Arduino IDE could **not** communicate with the board — no COM port, no upload.
-- We borrowed a cable from a friend who was already working on an ESP32 project. Using his cable, the board connected and worked immediately.
-- This confirmed the problem: our old cables were either **charging-only** or low-quality cables that didn't support proper **data transfer**.
-- We then bought a new Micro-USB data cable, testing it in the store first to confirm the ESP32 was detected, a COM port appeared, and code uploaded successfully — before buying it.
+- Touching the screen during any "place finger" step cancels it; every wait times out after 10 seconds
+- Touch calibration is done once and saved to flash; touch the screen at boot (2-second window) to recalibrate
+- A button press must be read twice at nearly the same spot, which filters touch noise
 
-**Lesson learned:** A USB cable can power a microcontroller while still failing to upload code, if it doesn't support data communication. If your ESP32 (or any Arduino-compatible board) isn't showing up as a COM port, **check your cable first** — it's one of the most common and overlooked issues.
-
----
-
-## ✅ Final Outcome
-
-- Reads RFID cards and registers voters per session
-- Prevents duplicate voting
-- Supports YES / NO voting with an UNDO option
-- Enforces a fixed voting session duration
-- Provides LED and buzzer feedback for every event
-- Tracks per-voter accountability data (UID, vote, timing)
-- Calculates and displays the final result and winner
+In the final system the terminal will send the matched **template ID** and the chosen vote to the server, and the **server** decides whether the vote is accepted.
 
 ---
 
-## 📚 What We Learned
+## 🔧 Troubleshooting (Problems We Actually Faced)
 
-- Setting up Arduino IDE for ESP32 development
-- Adding ESP32 board support and working with the CP2102 USB-UART chip
-- Diagnosing "power-only" vs. true data USB cables
-- SPI communication and RFID (RC522) integration
-- Managing multiple digital inputs/outputs (buttons, LEDs, buzzer)
-- Implementing duplicate-prevention and session-based logic
-- Applying digital logic concepts (AND-gate style conditions) in embedded code
-- Debugging real hardware end-to-end, from cable issues to final results
+| Problem | Cause | Fix |
+|---|---|---|
+| Board powers on but no COM port / cannot upload | Charging-only or poor USB cable | Use a known-good Micro-USB **data** cable and test it before buying |
+| `'class TFT_eSPI' has no member named 'getTouch'` | Default `User_Setup.h` still active: `TOUCH_CS` commented out, wrong driver, ESP8266 pins | Use the setup above, check `User_Setup_Select.h`, restart the IDE |
+| Display and sensor show no sign of power after a successful upload | 3V3 wires (TFT LED, DY50 3V3, DY50 T-3V3) not connected | Join them on a breadboard 3.3 V rail; verify with a multimeter |
+| Touch does nothing or gives random values | TFT `SDO(MISO)` and `T_DO` both on D19 | Leave TFT `SDO(MISO)` unconnected |
+| Touch drawing dotted or jittery | Redrawing and Serial printing on every sample; resistive panel noise | Large buttons, double-read filter, press firmly, saved calibration |
+| `Sensor NOT found` | TX/RX not crossed, no 3V3/GND, wrong baud | DY50 TX to RX2, DY50 RX to TX2; check power; try 9600 or 115200 baud |
+| White or garbled screen | Wrong display driver | Try `ST7796_DRIVER` instead of `ILI9488_DRIVER` |
+
+### Safety checklist before powering on
+
+- Unplug USB before changing any wire
+- Jumper J1 open when VCC is on 5 V
+- No 5 V on any GPIO or on the sensor
+- Continuity test (power off): no beep between 3V3 and GND, none between VIN and GND
+- Check voltages with the multimeter: VIN about 5 V, 3V3 about 3.3 V
+- Discharge static before touching bare boards
+
+---
+
+# 🗺️ A-to-Z Development Plan
+
+Build and test each component separately before combining everything. Get a working local prototype first, then refine.
+
+## Technology stack
+
+| Component | Technology |
+|---|---|
+| Admin and public websites | React + Vite |
+| Backend / API | Python + FastAPI |
+| Database (prototype) | SQLite |
+| PDF storage | Local server folder initially |
+| ESP32 firmware | Arduino framework, PlatformIO in VS Code |
+| Fingerprint sensor | AS608 with a compatible UART library |
+| TFT display | ILI9488 with TFT_eSPI |
+| Communication | Wi-Fi + HTTP/HTTPS REST API |
+| Version control | Git + GitHub |
+
+Keep the first version local: run the server and database on your computer and connect the ESP32 to the same Wi-Fi network. Consider hosting and secure remote access only after the local prototype works.
+
+## Roadmap
+
+### Phase 0 - Freeze the requirements
+Deliverable: a fixed feature list and workflow.
+- Main Host approves or rejects proposed sessions
+- Assistant Host manages members, fingerprint enrollment, parliamentary terms and bill preparation
+- A bill has a Bangla/English title, detailed question, voting options, session duration and a full proposal PDF
+- Members authenticate by fingerprint and vote on the ESP32 terminal
+- Vote revision is allowed only while the session is active, if enabled
+- The server finalizes results and publishes the approved record
+
+### Phase 1 - Prepare the development environment
+Deliverable: tools installed and a working GitHub repository.
+- Verify Python, VS Code, Git, Node.js and PlatformIO
+- Create the project folder, initialize Git and a Python virtual environment
+- Create a minimal FastAPI server and a minimal React site, and confirm they can talk
+
+### Phase 2 - Test the hardware separately
+Deliverable: each physical component works independently.
+1. ESP32 LED blink ✅
+2. Buzzer tones ⬜
+3. Button presses ⬜
+4. Wi-Fi connection and reconnection ⬜
+5. AS608 enrollment and matching ✅
+6. ILI9488 TFT text, colours and touch buttons ✅
+7. Bangla and English text rendering, including font memory and layout limits ⬜
+
+### Phase 3 - Build the database and backend
+Deliverable: an API and database that store and return test records.
+- Tables for users, terms, fingerprint references, bills, sessions, votes, audit events and publication records
+- API to create, edit, approve, start, close and fetch sessions
+- Store PDFs on the server with metadata and path in the database
+- Server-side deadline and vote validation; a small mock parliament as test data
+
+### Phase 4 - Build the administrative website
+Deliverable: Main Host and Assistant Host can manage the system from a browser.
+- Login and role-based access
+- Term and member management
+- Fingerprint enrollment that links a sensor template ID to the right member
+- Bill form with Bangla/English inputs and PDF upload
+- Session preview and submission; Main Host approval/rejection and monitoring
+- Show the active session, remaining time, participation count and device status
+
+### Phase 5 - Connect the ESP32 to the server
+Deliverable: the device displays a session received over Wi-Fi.
+- Safe Wi-Fi credential handling and a unique device ID
+- Fetch the current session; show bill title, question, options and status
+- Loading, disconnected, reconnecting and server-error screens
+- The terminal must **not** use its own clock to decide whether voting is allowed
+
+### Phase 6 - Implement fingerprint voting
+Deliverable: an eligible mock member can cast a verified vote.
+- Scan, match with the AS608, send the template ID and vote to the backend
+- The backend checks membership, term eligibility, session state, deadline and duplicate/revision rules
+- Clear success or failure on the TFT, plus buzzer and LED feedback
+
+### Phase 7 - Build the public website and archive
+Deliverable: visitors can find finalized bills and results.
+- Home page and finalized-bills list with search and filters (term, title, date)
+- Bill detail page: question, options, final totals and proposal PDF
+- Historical term pages
+- Drafts, rejected proposals and active sessions are never shown as final records
+
+### Phase 8 - Security, reliability and integration
+Deliverable: correct behaviour in normal use and during failures.
+- Protect admin accounts and restrict actions by role
+- Validate PDF type and size
+- Use HTTPS beyond a trusted local network
+- Make vote submission safe to retry without double counting
+- Keep a revision/audit trail
+- Test Wi-Fi loss, device restarts, repeated scans, expired sessions and simultaneous requests
+- Back up the database and PDFs together
+
+### Phase 9 - Final demonstration and documentation
+Deliverable: a repeatable end-to-end demo.
+- Run a mock term with sample members, prepare a bill with a PDF, get Main Host approval
+- Conduct fingerprint voting, verify the final count and publish
+- Confirm the PDF and result appear in the public archive
+- Prepare the circuit diagram, database diagram, API documentation, screenshots, test results and report
+
+## Project folder structure
+
+```text
+parliament-voting-system/
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── database.py
+│   │   ├── models.py
+│   │   ├── schemas.py
+│   │   ├── security.py
+│   │   ├── api/
+│   │   │   ├── auth.py
+│   │   │   ├── members.py
+│   │   │   ├── terms.py
+│   │   │   ├── bills.py
+│   │   │   ├── sessions.py
+│   │   │   ├── votes.py
+│   │   │   └── public.py
+│   │   └── services/
+│   │       ├── voting.py
+│   │       ├── finalization.py
+│   │       └── documents.py
+│   ├── uploads/
+│   ├── tests/
+│   └── requirements.txt
+│
+├── admin-website/
+│   └── src/ (pages, components, services, App.jsx)
+│
+├── public-website/
+│   └── src/ (pages, components, services)
+│
+├── esp32-firmware/
+│   ├── platformio.ini
+│   ├── src/main.cpp
+│   └── prototypes/            # touch_test.ino, fingerprint_touch_app.ino
+│
+├── docs/
+│   ├── requirements.md
+│   ├── architecture.md
+│   ├── database-design.md
+│   ├── circuit-diagram.md
+│   └── testing.md
+│
+├── .gitignore
+└── README.md
+```
+
+## Database design
+
+| Table | Purpose |
+|---|---|
+| users | Hosts, members, roles, account status |
+| parliamentary_terms | Five-year terms and their status |
+| term_memberships | Which members belong to which term |
+| fingerprint_references | Sensor template IDs linked to members |
+| bills | Title, detailed question, languages and metadata |
+| documents | Proposal PDF path, size and checksum |
+| sessions | Approval, start/end time, options and status |
+| votes | Latest accepted vote per member and session |
+| vote_audit | Accepted revisions and vote events |
+| audit_events | Administrative changes, approvals and other key actions |
+
+Design rules:
+
+- Store only the AS608 **template reference**, not raw fingerprint images or biometric data, in the website database. Test the sensor's template capacity.
+- Put a unique constraint on each member/session vote so duplicate network requests cannot create duplicate votes.
+- Record revisions in an audit table if changing a vote is allowed.
+- Keep PDFs outside the database and store their metadata in it.
+- The server is the authority for deadline, eligibility, vote acceptance and final totals.
+
+## API endpoints (proposed)
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/auth/login` | Administrative login |
+| `GET /api/terms` | List parliamentary terms |
+| `POST /api/members` | Register a member |
+| `POST /api/bills` | Create bill metadata |
+| `POST /api/bills/{id}/document` | Upload proposal PDF |
+| `POST /api/sessions` | Submit a proposed session |
+| `POST /api/sessions/{id}/approve` | Main Host approves |
+| `POST /api/sessions/{id}/reject` | Main Host rejects |
+| `POST /api/sessions/{id}/start` | Start an approved session |
+| `GET /api/device/session` | ESP32 fetches the active session |
+| `POST /api/device/vote` | Submit a member's vote |
+| `GET /api/sessions/{id}/results` | Retrieve authorized results |
+| `GET /api/public/bills` | List finalized public bills |
+| `GET /api/public/bills/{id}` | Read a finalized bill |
+| `GET /api/public/bills/{id}/document` | Access its published proposal PDF |
+
+These are proposed names, not existing code. Admin endpoints must enforce role permissions, and device endpoints must identify the terminal and check the voting state.
+
+## Voting session state machine
+
+```
+Draft  →  Pending Approval  →  Approved  →  Active  →  Finalized
+(Assistant   (waiting for       (authorized   (valid votes   (votes locked,
+ Host         Main Host)         to start)     accepted       result published)
+ prepares)                                     until deadline)
+```
+
+- Rejection moves a proposal to a non-active rejected state; resubmission or reopening needs explicit authorization.
+- When a session expires, the backend stops accepting votes and finalizes the result with a reliable server-side process.
+- A device showing an old "active" screen must never override the server's session state.
+- By default, publish only final totals; do **not** publish individual members' vote choices.
+
+## Suggested schedule
+
+| Week | Target |
+|---|---|
+| 1 | Requirements, tools, GitHub repository |
+| 2 | ESP32, buttons, buzzer, TFT and AS608 individual tests |
+| 3 | Database schema and basic backend APIs |
+| 4 | Login, member management, parliamentary terms |
+| 5 | Bill preparation, Bangla/English text, PDF uploads |
+| 6 | Main Host approval and session controls |
+| 7 | ESP32 Wi-Fi connection and active-session display |
+| 8 | Fingerprint authentication and vote submission |
+| 9 | Finalization, result calculation, public archive |
+| 10 | Security, integration tests, bug fixes, demonstration |
+
+Allow extra time for the TFT driver, Bangla font rendering, fingerprint enrollment or network reliability issues.
+
+## Final testing checklist
+
+**Hardware**
+- [x] ESP32 starts reliably
+- [x] AS608 enrollment and matching work
+- [x] TFT displays readable English text
+- [ ] Bangla font rendering tested
+- [ ] Buttons, LEDs and buzzer work
+
+**Administration**
+- [ ] Assistant Host can register members
+- [ ] Assistant Host can upload a proposal PDF
+- [ ] Main Host can approve or reject a session
+- [ ] Unauthorized roles cannot perform restricted actions
+
+**Voting**
+- [ ] Only eligible members can vote
+- [ ] Invalid fingerprints are rejected
+- [ ] Duplicate requests do not double-count votes
+- [ ] Permitted vote revisions update the latest vote
+- [ ] Votes are rejected after the server deadline
+- [ ] Network failure does not falsely confirm a vote
+
+**Publication**
+- [ ] Final result matches accepted votes
+- [ ] Finalized bill and PDF appear in the public archive
+- [ ] Draft and rejected proposals stay private
+- [ ] Past parliamentary terms remain searchable
+- [ ] Database and PDF backups can be restored
+
+---
+
+## ▶️ Next Step
+
+Prepare the development environment (Phase 1), then add the remaining Phase 2 hardware tests (buzzer, buttons, Wi-Fi) before building the backend.
+
+```bash
+python3 --version
+git --version
+node --version
+npm --version
+
+git init
+mkdir -p backend admin-website public-website esp32-firmware docs
+```
+
+Create a `.gitignore` so passwords, environment files, real-data database files and private uploads are never committed.
 
 ---
 
 ## 👥 Team
 
-Developed by a team of five members for a Spring Semester 2026 embedded systems project 
-.
+Developed by a team of four members for a Spring Semester 2026 embedded systems project.
 
 Md Arif Mahmud Oyion,
-Md Bony Amin, 
-Md Rakibul Islam, 
-Niloy Bormon,  
-Mohona 
-American International University- Bangladesh
+Md Rakibul Islam,
+Niloy Bormon,
+Sheum Ahmed
+
+American International University-Bangladesh
